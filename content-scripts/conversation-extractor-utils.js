@@ -12,17 +12,105 @@
   window.ConversationExtractorUtils = window.ConversationExtractorUtils || {};
 
   // ============================================================================
+  // HTML Sanitization Functions
+  // ============================================================================
+
+  /**
+   * Whitelist of allowed HTML tags for markdown extraction
+   * Only safe formatting tags are permitted to prevent XSS
+   */
+  const ALLOWED_TAGS = new Set([
+    'p', 'div', 'span', 'br',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'strong', 'b', 'em', 'i',
+    'code', 'pre',
+    'ul', 'ol', 'li',
+    'blockquote',
+    'a'
+  ]);
+
+  /**
+   * Whitelist of allowed HTML attributes per tag
+   * Prevents javascript: URLs and event handlers
+   */
+  const ALLOWED_ATTRIBUTES = {
+    'a': ['href'],
+    'code': ['class'],  // For language-* syntax highlighting
+    'pre': ['class']
+  };
+
+  /**
+   * Sanitize a DOM node by filtering out dangerous tags and attributes
+   * @param {Node} node - DOM node to sanitize
+   * @returns {Node|null} Sanitized node or null if rejected
+   */
+  function sanitizeNode(node) {
+    // Text nodes are always safe
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node;
+    }
+
+    // Only allow element nodes
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return null;
+    }
+
+    const tagName = node.tagName.toLowerCase();
+
+    // Reject tags not in whitelist
+    if (!ALLOWED_TAGS.has(tagName)) {
+      console.warn(`[Sanitizer] Rejected disallowed tag: ${tagName}`);
+      return null;
+    }
+
+    // For links, validate href attribute
+    if (tagName === 'a') {
+      const href = node.getAttribute('href');
+      if (href) {
+        // Block javascript:, data:, and vbscript: URLs
+        const lowerHref = href.toLowerCase().trim();
+        if (lowerHref.startsWith('javascript:') ||
+            lowerHref.startsWith('data:') ||
+            lowerHref.startsWith('vbscript:')) {
+          console.warn(`[Sanitizer] Rejected dangerous href: ${href}`);
+          // Remove href but keep link text
+          node.removeAttribute('href');
+        }
+      }
+    }
+
+    // Remove all attributes except whitelisted ones
+    const allowedAttrs = ALLOWED_ATTRIBUTES[tagName] || [];
+    Array.from(node.attributes).forEach(attr => {
+      if (!allowedAttrs.includes(attr.name.toLowerCase())) {
+        node.removeAttribute(attr.name);
+      }
+    });
+
+    return node;
+  }
+
+  // ============================================================================
   // Markdown Extraction Functions
   // ============================================================================
 
   /**
    * Recursively extract markdown from DOM elements
    * Preserves formatting like code blocks, headings, lists, bold, italic, etc.
+   * Now includes HTML sanitization to prevent XSS attacks
    * @param {Node} node - DOM node to extract from
    * @returns {string} Markdown-formatted text
    */
   window.ConversationExtractorUtils.extractMarkdownFromElement = function extractMarkdownFromElement(node) {
   if (!node) return '';
+
+  // Sanitize node before processing
+  const sanitized = sanitizeNode(node);
+  if (!sanitized) {
+    // Rejected during sanitization - skip this node
+    return '';
+  }
+  node = sanitized;
 
   // Text node - return text content
   if (node.nodeType === Node.TEXT_NODE) {
