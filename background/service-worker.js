@@ -5,6 +5,70 @@ import {
 } from '../modules/history-manager.js';
 import { t, initializeLanguage } from '../modules/i18n.js';
 
+// ============================================================================
+// Global Error Handlers
+// ============================================================================
+
+/**
+ * Global error handler for unhandled synchronous errors in service worker
+ * Prevents service worker from crashing silently
+ */
+self.addEventListener('error', (event) => {
+  console.error('[Service Worker] Unhandled error:', {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    error: event.error
+  });
+
+  // Log stack trace if available
+  if (event.error && event.error.stack) {
+    console.error('[Service Worker] Stack trace:', event.error.stack);
+  }
+
+  // Prevent default handling (which would crash the service worker)
+  event.preventDefault();
+
+  // Attempt to notify user if critical error
+  if (event.error && event.error.message) {
+    // Could log to analytics/crash reporting here
+    chrome.notifications?.create({
+      type: 'basic',
+      iconUrl: '../icons/icon128.png',
+      title: 'Extension Error',
+      message: 'insidebar.ai encountered an error. Please reload the extension if issues persist.'
+    }).catch(() => {
+      // Notifications may not be available
+    });
+  }
+});
+
+/**
+ * Global handler for unhandled promise rejections in service worker
+ * Prevents silent failures in async operations
+ */
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('[Service Worker] Unhandled promise rejection:', {
+    reason: event.reason,
+    promise: event.promise
+  });
+
+  // Log stack trace if available
+  if (event.reason && event.reason.stack) {
+    console.error('[Service Worker] Stack trace:', event.reason.stack);
+  }
+
+  // Prevent default handling
+  event.preventDefault();
+
+  // Could log to analytics/crash reporting here
+});
+
+// ============================================================================
+// Service Worker Initialization
+// ============================================================================
+
 // T008 & T065: Install event - setup context menus and configure side panel
 const DEFAULT_SHORTCUT_SETTING = { keyboardShortcutEnabled: true };
 let keyboardShortcutEnabled = true;
