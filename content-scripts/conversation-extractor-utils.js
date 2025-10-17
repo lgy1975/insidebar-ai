@@ -272,7 +272,8 @@
   window.ConversationExtractorUtils.generateConversationId = function(url, title) {
   // Prefer URL-based ID for uniqueness and reliability
   if (url) {
-    // Google AI Mode: Use normalized query parameter only
+    // Google AI Mode: Use normalized query + timestamp to prevent collisions
+    // Different conversations with same query won't overwrite each other
     if (url.includes('google.com/search') && url.includes('udm=50')) {
       try {
         const urlObj = new URL(url);
@@ -280,7 +281,8 @@
         if (query) {
           // Normalize query: lowercase, trim, collapse spaces
           const normalized = query.toLowerCase().trim().replace(/\s+/g, ' ');
-          return `google-ai-${normalized}`;
+          // Append timestamp to ensure uniqueness across conversations with identical queries
+          return `google-ai-${normalized}-${Date.now()}`;
         }
       } catch (e) {
         console.error('[Extractor Utils] Error parsing Google AI URL:', e);
