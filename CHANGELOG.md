@@ -1,119 +1,207 @@
 # Changelog
 
-All notable changes to insidebar.ai will be documented in this file.
+All notable changes to insidebar.ai extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] - 2025-10-16
-
-### Added
-- **Claude.ai Enter Key Customization**: Full support for enter key behavior customization on Claude.ai
-  - Uses window capture pattern to intercept events before ProseMirror
-  - Supports all presets: Default, Swapped, Slack-style, Discord-style, Custom
-  - For newline: dispatches Shift+Enter (ProseMirror native)
-  - For send: clicks send button programmatically (more reliable)
-- **Test Suites**: Added comprehensive tests for core utilities
-  - html-utils.test.js: Tests for HTML content extraction and formatting
-  - prompt-manager.test.js: Tests for prompt management operations
-
-### Changed
-- **Security Improvements**: Audit fixes for dependencies and code quality
-  - Updated npm dependencies to latest secure versions
-  - Removed debug console.log statements from production code
-  - Optimized package-lock.json (reduced from 3336 to 1701 lines)
-
-### Fixed
-- Claude.ai enter key behavior now respects user configuration
-- Removed unnecessary debug logging from Grok enter behavior handler
-
-## [1.2.0] - 2025-01-14
-
-### Added
-- **Prompt Genie (Prompt Library)**: Full-featured prompt management system
-  - Save, edit, delete, and organize prompts with categories and tags
-  - Search and filter prompts by text, category, or favorites
-  - Import/export prompt libraries (JSON format)
-  - Quick Access panel showing recently used and top favorite prompts
-  - Workspace for editing prompts with send-to-provider functionality
-  - Default prompt library with 50+ curated prompts
-- **Keyboard Shortcuts**:
-  - `Cmd+Shift+E` (Mac) / `Ctrl+Shift+E` (Windows/Linux): Toggle sidebar
-  - `Cmd+Shift+P` (Mac) / `Ctrl+Shift+P` (Windows/Linux): Open Prompt Library
-- **Auto-paste Clipboard**: Automatically paste clipboard content when opening sidebar
-- **Enter Key Behavior Customization**: Configure Enter vs Shift+Enter behavior for each provider
-  - Multiple presets: Default, Swapped, Slack-style, Discord-style, Custom
-  - Provider-specific content scripts for ChatGPT, Gemini, Grok, DeepSeek, Perplexity
-- **Material Symbols Icons**: Migrated from UTF-8 characters to professional icon font
-  - Consistent cross-platform rendering
-  - Theme-adaptive with automatic dark mode support
-  - Variable font technology for dynamic adjustments
-
-### Changed
-- Improved settings page UI with better organization
-- Enhanced provider tab navigation with consistent icon sizes
-- Optimized IndexedDB operations with retry logic and better error handling
-- Updated context menu to dynamically reflect enabled providers
-
-### Fixed
-- IndexedDB DataError when category filter has invalid parameters
-- Side panel toggle state tracking across multiple windows
-- Icon size consistency throughout the UI (28px modals, 20px workspace, 18px filters)
-- Modal button visibility and styling
-
-## [1.1.0] - 2025-01-10
-
-### Added
-- Context menu integration: Right-click to send selected text to AI providers
-- Settings page for managing enabled providers and default provider
-- Provider enable/disable toggles
-- Theme selection (Auto/Light/Dark)
-
-### Changed
-- Improved error handling for iframe loading
-- Better cookie-based authentication reliability
-
-### Fixed
-- Provider switching issues in side panel
-- Theme detection for system preferences
-
-## [1.0.0] - 2025-01-05
-
-### Added
-- Initial release of insidebar.ai
-- Multi-AI provider support: ChatGPT, Claude, Gemini, Grok, DeepSeek
-- Side panel interface for Chrome/Edge
-- Cookie-based authentication (no API keys required)
-- Provider tab navigation
-- Basic settings management
-- Dark/Light theme support with auto-detection
+## [Unreleased]
 
 ### Security
-- Content Security Policy configured
-- declarativeNetRequest for header bypass
-- No external data collection or transmission
+- Add HTML sanitization to markdown extractor with whitelist-based tag/attribute filtering
+- Implement Content Security Policy (CSP) in sidebar to restrict iframe sources
+- Block dangerous URLs (javascript:, data:, vbscript:) in extracted content
+- Remove all event handlers from sanitized HTML
+
+### Reliability
+- Add global error handlers to service worker for unhandled errors and promise rejections
+- Add proactive storage quota monitoring to prevent silent save failures
+- Notify users at 80%, 90%, 95% storage thresholds
+- Block saves when storage exceeds 95% quota
+- Display accurate storage quota in options page (MB / MB with percentage)
+
+### Fixed
+- Fix Google AI Mode conversation ID collision by appending timestamp
+- Fix www.google.com not loading in sidebar (CSP whitelist)
+
+### Code Quality
+- Refactor markdown extractor to reduce cyclomatic complexity from 18 to ~5
+- Extract tag-specific handlers into markdownHandlers object
+- Improve code maintainability and readability
+
+### Documentation
+- Add ARCHITECTURE.md with comprehensive system design documentation
+- Add CHANGELOG.md for version tracking
+
+## [1.5.0] - 2025-01-18
+
+### Added
+- Multi-language support for 10 languages:
+  - English (en)
+  - Simplified Chinese (zh_CN)
+  - Traditional Chinese (zh_TW)
+  - Japanese (ja)
+  - Korean (ko)
+  - Spanish (es)
+  - French (fr)
+  - German (de)
+  - Italian (it)
+  - Russian (ru)
+- Language selection in options page
+- i18n support for sidebar UI, context menus, and options page
+- Translation function with substitution support
+- Auto-detection of browser language on first install
+
+### Changed
+- Dynamic provider dropdown in options page (shows only enabled providers)
+- "Remember Last Provider" toggle to control sidebar startup behavior
+  - When enabled: Opens last selected provider
+  - When disabled: Always opens default provider
+
+### Fixed
+- Clear lastSelectedProvider when provider is disabled
+- Fix language switching to work immediately without page reload
+- Fix missing translation keys in options page
+
+## [1.4.0] - 2024-12-15
+
+### Added
+- Version check feature for zip installations
+- Automatic version update script for version-info.json
+- Download latest version link in options page
+- Build date and commit hash display in About section
+
+### Fixed
+- Fix version check CORS issue by using background service worker
+- Move GitHub API calls from options page to service worker
+
+## [1.3.0] - 2024-12-10
+
+### Added
+- Custom Enter key behavior for AI providers
+  - Presets: Default, Swapped, Slack-style, Discord-style, Custom
+  - Per-provider key mapping configuration
+  - Enable/disable toggle in options
+- Auto-paste clipboard option for Prompt Library shortcut
+- Auto-open sidebar after conversation save option
+
+### Changed
+- Improve keyboard shortcut UX
+- Add Edge browser detection and shortcut helper
+- Refine Danger Zone styling in options page
+
+## [1.2.0] - 2024-11-28
+
+### Added
+- Prompt Library (Prompt Genie) feature
+  - Save and organize reusable prompts
+  - Categories and tags for organization
+  - Variable substitution in prompts
+  - Quick access panel for recent/favorite prompts
+  - Import/export prompts as JSON
+  - Default prompt library with meta-prompts
+- Prompt workspace for editing text before sending
+- Provider selection in workspace
+
+### Changed
+- Improve sidebar UI with workspace area
+- Add multiple sort options (recent, most-used, alphabetical, newest)
+- Enhanced search with category filtering
+
+## [1.1.0] - 2024-11-15
+
+### Added
+- Chat History feature
+  - Save conversations from AI provider pages
+  - Keyboard shortcut (Cmd/Ctrl+Shift+S) to save
+  - Advanced search with field operators
+  - Fuzzy matching with Levenshtein distance
+  - Favorites and tagging system
+  - Provider filtering
+  - Export/import conversations as JSON
+- Duplicate detection for conversations
+- Conversation metadata (timestamp, notes, URL)
+
+### Changed
+- Improve conversation extraction with markdown formatting
+- Add relevance scoring for search results
+
+## [1.0.0] - 2024-11-01
+
+### Added
+- Initial release
+- Multi-AI provider sidebar with iframe embedding
+  - ChatGPT
+  - Claude
+  - Gemini
+  - Google AI Mode
+  - Grok
+  - DeepSeek
+- Provider tabs for quick switching
+- Context menu integration (right-click → Send to AI)
+- Keyboard shortcuts
+  - Cmd/Ctrl+Shift+E: Open sidebar
+  - Cmd/Ctrl+Shift+P: Open Prompt Library
+- Settings page
+  - Enable/disable providers
+  - Default provider selection
+  - Theme switching (auto, light, dark)
+  - Keyboard shortcut toggle
+- Text injection into AI provider input fields
+- Page content extraction for summarization
+- IndexedDB for local data storage
+- Chrome storage for settings sync
+
+### Security
+- Manifest V3 compliance
+- Service worker background script
+- Content Security Policy for iframe sources
+- Isolated content script execution
 
 ---
 
-## Roadmap
+## Version History Summary
 
-### Version 1.3 (Planned)
-- [ ] Perplexity provider integration in main sidebar
-- [ ] Prompt templates with variable substitution
-- [ ] Batch prompt execution across multiple providers
-- [ ] Enhanced search with fuzzy matching
-- [ ] Prompt usage analytics
+- **1.5.0** (2025-01-18): Multi-language support, dynamic provider dropdown
+- **1.4.0** (2024-12-15): Version checking, auto-update script
+- **1.3.0** (2024-12-10): Custom Enter key behavior
+- **1.2.0** (2024-11-28): Prompt Library (Prompt Genie)
+- **1.1.0** (2024-11-15): Chat History with advanced search
+- **1.0.0** (2024-11-01): Initial release
 
-### Version 2.0 (Future)
-- [ ] Cloud sync for prompts (optional)
-- [ ] Custom workflows and automation
-- [ ] AI response history and comparison
-- [ ] Plugin system for extensibility
-- [ ] Firefox support
+## Links
 
----
+- [GitHub Repository](https://github.com/xiaolai/insidebar-ai)
+- [Report Issues](https://github.com/xiaolai/insidebar-ai/issues)
 
-[1.3.0]: https://github.com/xiaolai/insidebar-ai/releases/tag/v1.3.0
-[1.2.0]: https://github.com/xiaolai/insidebar-ai/releases/tag/v1.2.0
-[1.1.0]: https://github.com/xiaolai/insidebar-ai/releases/tag/v1.1.0
-[1.0.0]: https://github.com/xiaolai/insidebar-ai/releases/tag/v1.0.0
+## Upgrade Notes
+
+### From 1.4.x to 1.5.0
+- Settings will be preserved automatically
+- Language will default to browser language (or English)
+- You can change language in Options → Appearance → Language
+- New "Remember Last Provider" setting defaults to `true` (current behavior)
+
+### From 1.3.x to 1.4.0
+- No breaking changes
+- Version info now displayed in About section
+- Can check for updates manually via "Check for Updates" button
+
+### From 1.2.x to 1.3.0
+- Enter key behavior defaults to "Swapped" (Enter=Newline, Shift+Enter=Send)
+- Can customize or disable in Options → Enter Key Behavior
+- Setting applies to all supported AI providers
+
+### From 1.1.x to 1.2.0
+- Existing conversations are preserved
+- Prompt Library is a new feature, no migration needed
+- Default prompt library can be imported from Options page
+
+### From 1.0.x to 1.1.0
+- IndexedDB schema upgraded from version 2 to version 3
+- Migration is automatic and non-destructive
+- Existing settings are preserved
+
+## License
+
+See LICENSE file for license information.
