@@ -1,6 +1,12 @@
 // T028: Prompt Manager with IndexedDB operations
 // Handles CRUD operations for prompts in the Prompt Library
 
+import {
+  canPerformStorageOperation,
+  monitorStorageQuota,
+  estimateObjectSize
+} from './storage-monitor.js';
+
 const DB_NAME = 'SmarterPanelDB';
 const DB_VERSION = 4;  // Upgraded to add modifiedAt field for conversations
 const PROMPTS_STORE = 'prompts';
@@ -143,6 +149,14 @@ export async function savePrompt(promptData) {
     throw new Error(validationErrors.join(', '));
   }
 
+  // Check storage quota before saving
+  const estimatedSize = estimateObjectSize(promptData);
+  const { allowed, reason } = await canPerformStorageOperation(estimatedSize);
+
+  if (!allowed) {
+    throw new Error(reason);
+  }
+
   // Sanitize input
   const prompt = {
     title: sanitizeString(promptData.title || 'Untitled Prompt', MAX_TITLE_LENGTH),
@@ -158,13 +172,20 @@ export async function savePrompt(promptData) {
     useCount: promptData.useCount || 0
   };
 
-  return runWithRetry(() => {
+  const result = await runWithRetry(() => {
     const transaction = db.transaction([PROMPTS_STORE], 'readwrite');
     const store = transaction.objectStore(PROMPTS_STORE);
     const request = store.add(prompt);
 
     return wrapRequest(request, resolveValue => ({ ...prompt, id: resolveValue }));
   });
+
+  // Monitor quota after save operation
+  await monitorStorageQuota().catch(() => {
+    // Silently fail monitoring - save already succeeded
+  });
+
+  return result;
 }
 
 // T031: Get prompt by ID
@@ -366,6 +387,14 @@ export async function importPrompts(data, mergeStrategy = 'skip') {
     throw new Error('Invalid import data format');
   }
 
+  // Check quota before starting import
+  const totalSize = estimateObjectSize(data.prompts);
+  const { allowed, reason } = await canPerformStorageOperation(totalSize);
+
+  if (!allowed) {
+    throw new Error(`Import aborted: ${reason}`);
+  }
+
   const results = {
     imported: 0,
     skipped: 0,
@@ -431,6 +460,14 @@ export async function getTopFavorites(limit = 5) {
 export async function importDefaultLibrary(libraryData) {
   if (!libraryData || !libraryData.prompts || !Array.isArray(libraryData.prompts)) {
     throw new Error('Invalid library data format');
+  }
+
+  // Check quota before starting import
+  const totalSize = estimateObjectSize(libraryData.prompts);
+  const { allowed, reason } = await canPerformStorageOperation(totalSize);
+
+  if (!allowed) {
+    throw new Error(`Default library import aborted: ${reason}`);
   }
 
   const results = {

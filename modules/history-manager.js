@@ -2,6 +2,11 @@
 // Handles CRUD operations for saved conversations
 
 import { initPromptDB } from './prompt-manager.js';
+import {
+  canPerformStorageOperation,
+  monitorStorageQuota,
+  estimateObjectSize
+} from './storage-monitor.js';
 
 const DB_NAME = 'SmarterPanelDB';
 const CONVERSATIONS_STORE = 'conversations';
@@ -93,6 +98,14 @@ export async function saveConversation(conversationData) {
     throw new Error(validationErrors.join(', '));
   }
 
+  // Check storage quota before saving
+  const estimatedSize = estimateObjectSize(conversationData);
+  const { allowed, reason } = await canPerformStorageOperation(estimatedSize);
+
+  if (!allowed) {
+    throw new Error(reason);
+  }
+
   // Check if we should overwrite an existing conversation
   if (conversationData.overwriteId) {
     // Update existing conversation instead of creating new one
@@ -135,13 +148,20 @@ export async function saveConversation(conversationData) {
   // Generate search text
   conversation.searchText = generateSearchText(conversation);
 
-  return runWithRetry(() => {
+  const result = await runWithRetry(() => {
     const transaction = db.transaction([CONVERSATIONS_STORE], 'readwrite');
     const store = transaction.objectStore(CONVERSATIONS_STORE);
     const request = store.add(conversation);
 
     return wrapRequest(request, resolveValue => ({ ...conversation, id: resolveValue }));
   });
+
+  // Monitor quota after save operation
+  await monitorStorageQuota().catch(() => {
+    // Silently fail monitoring - save already succeeded
+  });
+
+  return result;
 }
 
 // Get conversation by ID
@@ -609,6 +629,14 @@ export async function exportConversations() {
 export async function importConversations(data, mergeStrategy = 'skip') {
   if (!data || !data.conversations || !Array.isArray(data.conversations)) {
     throw new Error('Invalid import data format');
+  }
+
+  // Check quota before starting import
+  const totalSize = estimateObjectSize(data.conversations);
+  const { allowed, reason } = await canPerformStorageOperation(totalSize);
+
+  if (!allowed) {
+    throw new Error(`Import aborted: ${reason}`);
   }
 
   const results = {

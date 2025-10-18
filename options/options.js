@@ -20,6 +20,10 @@ import {
   checkForUpdates
 } from '../modules/version-checker.js';
 import { t, translatePage, getCurrentLanguage, initializeLanguage } from '../modules/i18n.js';
+import {
+  checkStorageQuota,
+  getStorageStatusMessage
+} from '../modules/storage-monitor.js';
 const DEFAULT_ENABLED_PROVIDERS = ['chatgpt', 'claude', 'gemini', 'grok', 'deepseek'];
 
 // Helper function to get browser's current language in our supported format
@@ -265,12 +269,44 @@ async function loadDataStats() {
     document.getElementById('stat-prompts').textContent = prompts.length;
     document.getElementById('stat-conversations').textContent = conversations.length;
 
-    // Estimate storage size (include both prompts and conversations)
-    const promptsSize = JSON.stringify(prompts).length;
-    const conversationsSize = JSON.stringify(conversations).length;
-    const totalSize = promptsSize + conversationsSize;
-    const sizeKB = Math.round(totalSize / 1024);
-    document.getElementById('stat-storage').textContent = `~${sizeKB} KB`;
+    // Use storage monitor to get accurate quota information
+    const quotaInfo = await checkStorageQuota();
+
+    if (quotaInfo) {
+      // Display storage with quota information
+      const storageText = `${quotaInfo.usageMB} MB / ${quotaInfo.quotaMB} MB (${quotaInfo.percentUsed.toFixed(1)}%)`;
+      const statElement = document.getElementById('stat-storage');
+      statElement.textContent = storageText;
+
+      // Add warning styling if quota is high
+      if (quotaInfo.level === 'danger') {
+        statElement.style.color = '#d32f2f';
+        statElement.style.fontWeight = 'bold';
+      } else if (quotaInfo.level === 'critical') {
+        statElement.style.color = '#ff6f00';
+        statElement.style.fontWeight = 'bold';
+      } else if (quotaInfo.level === 'warning') {
+        statElement.style.color = '#f57c00';
+      } else {
+        statElement.style.color = '';
+        statElement.style.fontWeight = '';
+      }
+
+      // Show full status message if not safe
+      if (quotaInfo.level !== 'safe') {
+        const statusMessage = getStorageStatusMessage(quotaInfo);
+        statElement.title = statusMessage;
+      } else {
+        statElement.title = '';
+      }
+    } else {
+      // Fallback to estimate if quota API not available
+      const promptsSize = JSON.stringify(prompts).length;
+      const conversationsSize = JSON.stringify(conversations).length;
+      const totalSize = promptsSize + conversationsSize;
+      const sizeKB = Math.round(totalSize / 1024);
+      document.getElementById('stat-storage').textContent = `~${sizeKB} KB`;
+    }
   } catch (error) {
     // Silently handle data stats errors
     document.getElementById('stat-prompts').textContent = '0';
