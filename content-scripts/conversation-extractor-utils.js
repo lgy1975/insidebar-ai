@@ -95,34 +95,12 @@
   // ============================================================================
 
   /**
-   * Recursively extract markdown from DOM elements
-   * Preserves formatting like code blocks, headings, lists, bold, italic, etc.
-   * Now includes HTML sanitization to prevent XSS attacks
-   * @param {Node} node - DOM node to extract from
-   * @returns {string} Markdown-formatted text
+   * Tag-specific markdown handlers
+   * Each function handles conversion for one tag type
    */
-  window.ConversationExtractorUtils.extractMarkdownFromElement = function extractMarkdownFromElement(node) {
-  if (!node) return '';
-
-  // Sanitize node before processing
-  const sanitized = sanitizeNode(node);
-  if (!sanitized) {
-    // Rejected during sanitization - skip this node
-    return '';
-  }
-  node = sanitized;
-
-  // Text node - return text content
-  if (node.nodeType === Node.TEXT_NODE) {
-    return node.textContent;
-  }
-
-  // Element node - convert to markdown based on tag type
-  if (node.nodeType === Node.ELEMENT_NODE) {
-    const tagName = node.tagName.toLowerCase();
-
-    // Code blocks (highest priority)
-    if (tagName === 'pre') {
+  const markdownHandlers = {
+    // Code blocks
+    pre: (node) => {
       const codeElement = node.querySelector('code');
       if (codeElement) {
         const language = codeElement.className.match(/language-(\w+)/)?.[1] || '';
@@ -132,84 +110,114 @@
           : `\n\`\`\`\n${codeContent}\n\`\`\`\n\n`;
       }
       return `\n\`\`\`\n${node.textContent}\n\`\`\`\n\n`;
-    }
+    },
 
     // Inline code
-    if (tagName === 'code') {
-      return `\`${node.textContent}\``;
-    }
+    code: (node) => `\`${node.textContent}\``,
 
-    // Headings
-    if (tagName.match(/^h[1-6]$/)) {
+    // Headings (h1-h6)
+    heading: (node, tagName) => {
       const level = tagName.charAt(1);
       const hashes = '#'.repeat(parseInt(level));
       return `\n${hashes} ${getChildrenText(node)}\n\n`;
-    }
+    },
 
     // Bold/Strong
-    if (tagName === 'strong' || tagName === 'b') {
-      return `**${getChildrenText(node)}**`;
-    }
+    strong: (node) => `**${getChildrenText(node)}**`,
+    b: (node) => `**${getChildrenText(node)}**`,
 
     // Italic/Emphasis
-    if (tagName === 'em' || tagName === 'i') {
-      return `*${getChildrenText(node)}*`;
-    }
+    em: (node) => `*${getChildrenText(node)}*`,
+    i: (node) => `*${getChildrenText(node)}*`,
 
     // Links
-    if (tagName === 'a') {
+    a: (node) => {
       const href = node.getAttribute('href') || '';
       const text = getChildrenText(node);
       return `[${text}](${href})`;
-    }
+    },
 
-    // Lists
-    if (tagName === 'ul') {
+    // Unordered lists
+    ul: (node) => {
       let listText = '\n';
       Array.from(node.children).forEach(li => {
         if (li.tagName.toLowerCase() === 'li') {
-          listText += `- ${extractMarkdownFromElement(li).trim()}\n`;
+          listText += `- ${window.ConversationExtractorUtils.extractMarkdownFromElement(li).trim()}\n`;
         }
       });
       return listText + '\n';
-    }
+    },
 
-    if (tagName === 'ol') {
+    // Ordered lists
+    ol: (node) => {
       let listText = '\n';
       Array.from(node.children).forEach((li, index) => {
         if (li.tagName.toLowerCase() === 'li') {
-          listText += `${index + 1}. ${extractMarkdownFromElement(li).trim()}\n`;
+          listText += `${index + 1}. ${window.ConversationExtractorUtils.extractMarkdownFromElement(li).trim()}\n`;
         }
       });
       return listText + '\n';
-    }
+    },
 
     // Blockquotes
-    if (tagName === 'blockquote') {
+    blockquote: (node) => {
       const text = getChildrenText(node);
       return `\n> ${text}\n\n`;
-    }
+    },
 
     // Line breaks
-    if (tagName === 'br') {
-      return '\n';
-    }
+    br: () => '\n',
 
     // Paragraphs
-    if (tagName === 'p') {
-      return `${getChildrenMarkdown(node)}\n\n`;
+    p: (node) => `${getChildrenMarkdown(node)}\n\n`,
+
+    // Divs - process children
+    div: (node) => getChildrenMarkdown(node)
+  };
+
+  /**
+   * Recursively extract markdown from DOM elements
+   * Preserves formatting like code blocks, headings, lists, bold, italic, etc.
+   * Now includes HTML sanitization to prevent XSS attacks
+   * @param {Node} node - DOM node to extract from
+   * @returns {string} Markdown-formatted text
+   */
+  window.ConversationExtractorUtils.extractMarkdownFromElement = function extractMarkdownFromElement(node) {
+    if (!node) return '';
+
+    // Sanitize node before processing
+    const sanitized = sanitizeNode(node);
+    if (!sanitized) {
+      // Rejected during sanitization - skip this node
+      return '';
+    }
+    node = sanitized;
+
+    // Text node - return text content
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent;
     }
 
-    // Divs - just process children
-    if (tagName === 'div') {
+    // Element node - convert to markdown based on tag type
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tagName = node.tagName.toLowerCase();
+
+      // Check for heading tags (h1-h6)
+      if (tagName.match(/^h[1-6]$/)) {
+        return markdownHandlers.heading(node, tagName);
+      }
+
+      // Use handler if available, otherwise process children
+      const handler = markdownHandlers[tagName];
+      if (handler) {
+        return handler(node);
+      }
+
+      // Default: process children
       return getChildrenMarkdown(node);
     }
 
-    // Default: process children
-    return getChildrenMarkdown(node);
-  }
-
-  return '';
+    return '';
   };
 
   /**
