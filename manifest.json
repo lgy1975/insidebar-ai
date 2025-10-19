@@ -1,16 +1,9 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "__MSG_extensionDescription__",
   "default_locale": "en",
-
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "insidebar-ai@xiaolai.github.io",
-      "strict_min_version": "115.0"
-    }
-  },
 
   "permissions": [
     "sidePanel",
@@ -18,7 +11,8 @@
     "contextMenus",
     "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess",
-    "clipboardRead"
+    "clipboardRead",
+    "management"
   ],
 
   "host_permissions": [
@@ -28,8 +22,6 @@
     "*://gemini.google.com/*",
     "*://grok.com/*",
     "*://chat.deepseek.com/*",
-    "*://www.perplexity.ai/*",
-    "*://perplexity.ai/*",
     "*://www.perplexity.ai/*",
     "*://perplexity.ai/*",
     "*://www.google.com/*",
